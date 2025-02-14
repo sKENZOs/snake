@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เกมงูกินแอปเปิ้ล</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        #menu {
+            display: block;
+        }
+        #game-container {
+            display: none;
+        }
+        canvas {
+            border: 2px solid black;
+            display: block;
+            margin: 0 auto;
+        }
+        .score {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        .controls {
+            margin-top: 10px;
+        }
+        .btn {
+            width: 50px;
+            height: 50px;
+            font-size: 20px;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- เมนูเริ่มเกม -->
+    <div id="menu">
+        <h1>เกมงูกินแอปเปิ้ล</h1>
+        <p>ชื่อของคุณ: <input type="text" id="playerName" placeholder="กรอกชื่อ"></p>
+        <button onclick="startGame()">เริ่มเกม</button>
+        <h2>🏆 อันดับคะแนนสูงสุด 🏆</h2>
+        <ol id="leaderboard"></ol>
+    </div>
+
+    <!-- ตัวเกม -->
+    <div id="game-container">
+        <h1>เกมงูกินแอปเปิ้ล</h1>
+        <div class="score">คะแนน: <span id="score">0</span></div>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+        <div class="controls">
+            <div>
+                <button class="btn" onclick="changeDirection('up')">⬆️</button>
+            </div>
+            <div>
+                <button class="btn" onclick="changeDirection('left')">⬅️</button>
+                <button class="btn" onclick="changeDirection('right')">➡️</button>
+            </div>
+            <div>
+                <button class="btn" onclick="changeDirection('down')">⬇️</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const gridSize = 20;
+        let snake = [{ x: 200, y: 200 }];
+        let direction = { x: gridSize, y: 0 };
+        let apple = { x: 100, y: 100 };
+        let score = 0;
+        let gameLoop;
+        let gameRunning = false;
+        let playerName = "";
+
+        function startGame() {
+            playerName = document.getElementById("playerName").value.trim();
+            if (playerName === "") {
+                alert("กรุณากรอกชื่อก่อนเริ่มเกม!");
+                return;
+            }
+
+            document.getElementById("menu").style.display = "none";
+            document.getElementById("game-container").style.display = "block";
+
+            score = 0;
+            document.getElementById("score").textContent = score;
+            snake = [{ x: 200, y: 200 }];
+            direction = { x: gridSize, y: 0 };
+            apple = { x: 100, y: 100 };
+            gameRunning = true;
+
+            clearInterval(gameLoop);
+            gameLoop = setInterval(gameLoopFunction, 250);
+        }
+
+        function drawRect(color, x, y) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, gridSize, gridSize);
+        }
+
+        function drawGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawRect("red", apple.x, apple.y);
+            snake.forEach(segment => drawRect("green", segment.x, segment.y));
+        }
+
+        function moveSnake() {
+            const newHead = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
+
+            if (newHead.x < 0 || newHead.x >= canvas.width || newHead.y < 0 || newHead.y >= canvas.height ||
+                snake.some(segment => segment.x === newHead.x && segment.y === newHead.y)) {
+                clearInterval(gameLoop);
+                saveScore(playerName, score);
+                alert("Game Over! คะแนน: " + score);
+                showMenu();
+                return;
+            }
+
+            snake.unshift(newHead);
+
+            if (newHead.x === apple.x && newHead.y === apple.y) {
+                score += 10;
+                document.getElementById("score").textContent = score;
+                apple.x = Math.floor(Math.random() * (canvas.width / gridSize)) * gridSize;
+                apple.y = Math.floor(Math.random() * (canvas.height / gridSize)) * gridSize;
+            } else {
+                snake.pop();
+            }
+        }
+
+        function changeDirection(dir) {
+            if (!gameRunning) return;
+            if (dir === 'up' && direction.y === 0) direction = { x: 0, y: -gridSize };
+            else if (dir === 'down' && direction.y === 0) direction = { x: 0, y: gridSize };
+            else if (dir === 'left' && direction.x === 0) direction = { x: -gridSize, y: 0 };
+            else if (dir === 'right' && direction.x === 0) direction = { x: gridSize, y: 0 };
+        }
+
+        function handleKeyPress(event) {
+            if (!gameRunning) return;
+            const key = event.key;
+            if (key === "ArrowUp") changeDirection('up');
+            else if (key === "ArrowDown") changeDirection('down');
+            else if (key === "ArrowLeft") changeDirection('left');
+            else if (key === "ArrowRight") changeDirection('right');
+        }
+
+        function gameLoopFunction() {
+            if (gameRunning) {
+                moveSnake();
+                drawGame();
+            }
+        }
+
+        function saveScore(name, score) {
+            let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+            leaderboard.push({ name, score });
+            leaderboard.sort((a, b) => b.score - a.score);
+            leaderboard = leaderboard.slice(0, 10);
+            localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+        }
+
+        function showMenu() {
+            document.getElementById("menu").style.display = "block";
+            document.getElementById("game-container").style.display = "none";
+            updateLeaderboard();
+        }
+
+        function updateLeaderboard() {
+            let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+            const list = document.getElementById("leaderboard");
+            list.innerHTML = "";
+            leaderboard.forEach((entry, index) => {
+                const listItem = document.createElement("li");
+                listItem.textContent = `${index + 1}. ${entry.name} - ${entry.score}`;
+                list.appendChild(listItem);
+            });
+        }
+
+        document.addEventListener("keydown", handleKeyPress);
+        updateLeaderboard();
+    </script>
+</body>
+</html>
