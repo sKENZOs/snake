@@ -114,17 +114,27 @@
         function moveSnake() {
             const newHead = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
 
+            // เช็คว่าเกมจบหรือไม่
             if (newHead.x < 0 || newHead.x >= canvas.width || newHead.y < 0 || newHead.y >= canvas.height ||
                 snake.some(segment => segment.x === newHead.x && segment.y === newHead.y)) {
+                
+                // หยุดการเล่นเกม
                 clearInterval(gameLoop);
+                
+                // บันทึกคะแนน
                 saveScore(playerName, score);
+                
+                // แสดงข้อความ Game Over
                 alert("Game Over! คะแนน: " + score);
+                
+                // แสดงหน้าเมนู
                 showMenu();
                 return;
             }
 
             snake.unshift(newHead);
 
+            // เช็คการกินแอปเปิ้ล
             if (newHead.x === apple.x && newHead.y === apple.y) {
                 score += 10;
                 document.getElementById("score").textContent = score;
@@ -159,20 +169,39 @@
             }
         }
 
+        // ฟังก์ชั่นบันทึกคะแนน และเช็คชื่อซ้ำ
         function saveScore(name, score) {
             let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
-            leaderboard.push({ name, score });
+
+            // เช็คว่ามีชื่อซ้ำใน leaderboard หรือไม่
+            let playerIndex = leaderboard.findIndex(entry => entry.name === name);
+            
+            if (playerIndex !== -1) {
+                // ถ้ามีชื่อซ้ำ อัพเดตคะแนนถ้าคะแนนใหม่สูงกว่า
+                if (leaderboard[playerIndex].score < score) {
+                    leaderboard[playerIndex].score = score;
+                }
+            } else {
+                // ถ้าไม่มีชื่อใน leaderboard ให้เพิ่มเข้าไปใหม่
+                leaderboard.push({ name, score });
+            }
+
+            // จัดอันดับคะแนน
             leaderboard.sort((a, b) => b.score - a.score);
+
+            // เก็บเฉพาะ 10 อันดับแรก
             leaderboard = leaderboard.slice(0, 10);
             localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
         }
 
+        // ฟังก์ชั่นแสดงหน้าเมนู
         function showMenu() {
-            document.getElementById("menu").style.display = "block";
-            document.getElementById("game-container").style.display = "none";
-            updateLeaderboard();
+            document.getElementById("menu").style.display = "block"; // แสดงเมนู
+            document.getElementById("game-container").style.display = "none"; // ซ่อนเกม
+            updateLeaderboard(); // อัพเดต leaderboard
         }
 
+        // ฟังก์ชั่นอัพเดต leaderboard
         function updateLeaderboard() {
             let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
             const list = document.getElementById("leaderboard");
